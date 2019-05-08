@@ -1,0 +1,142 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: guestbook
+  labels:
+    app: guestbook
+
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: guestbook
+
+  template:
+    metadata:
+      labels:
+        app: guestbook
+    spec:
+      containers:
+        - name: guestbook
+          image: gcr.io/google-samples/gb-frontend:v4
+          env:
+            - name: GET_HOSTS_FROM
+              value: env
+          ports:
+            - name: http-server
+              containerPort: 80
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: guestbook
+  labels:
+    app: guestbook
+
+spec:
+  ports:
+    - port: 80
+      targetPort: http-server
+  selector:
+    app: guestbook
+
+  type: NodePort #LoadBalancer
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-master
+  labels:
+    app: redis
+    role: master
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+      role: master
+  template:
+    metadata:
+      labels:
+        app: redis
+        role: master
+    spec:
+      containers:
+        - name: redis-master
+          image: k8s.gcr.io/redis:e2e
+          ports:
+            - containerPort: 6379
+              name: redis-server
+
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-master
+  labels:
+    app: redis
+    role: master
+spec:
+  ports:
+    - port: 6379
+      targetPort: redis-server
+  selector:
+    app: redis
+    role: master
+
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-slave
+  labels:
+    app: redis
+    role: slave
+
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: redis
+      role: slave
+  template:
+    metadata:
+      labels:
+        app: redis
+        role: slave
+    spec:
+       containers:
+         - name: redis-slave
+           image: gcr.io/google_samples/gb-redisslave:v1
+           env:
+             - name: GET_HOSTS_FROM
+               value: env
+           ports:
+             - name: redis-server
+               containerPort: 6379
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-slave
+  labels:
+    app: redis
+    role: slave
+
+spec:
+  ports:
+    - port: 6379
+      targetPort: redis-server
+  selector:
+    app: redis
+    role: slave
